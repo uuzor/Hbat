@@ -1,0 +1,48 @@
+{
+  "name": "hedera-options-vault",
+  "version": "1.0.0",
+  "description": "Agentic Options Vault on Hedera — Pyth oracles, HIP-1215 native automation, Hedera Agent Kit",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network testnet",
+    "deploy:local": "hardhat run scripts/deploy.ts --network local",
+    "agent": "ts-node agent/src/index.ts",
+    "agent:dev": "ts-node --watch agent/src/index.ts",
+    "typechain": "hardhat typechain",
+    "coverage": "hardhat coverage",
+    "lint": "eslint . --ext .ts,.sol",
+    "format": "prettier --write \"**/*.{ts,sol,json}\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@hashgraph/hedera-agent-kit": "^1.0.0",
+    "@hashgraph/sdk": "^2.50.0",
+    "@langchain/anthropic": "^0.3.0",
+    "@langchain/core": "^0.3.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@pythnetwork/pyth-sdk-solidity": "^3.1.0",
+    "dotenv": "^16.4.5",
+    "langchain": "^0.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.7",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^4.3.17",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^22.5.4",
+    "chai": "^4.5.0",
+    "ethers": "^6.13.2",
+    "hardhat": "^2.22.12",
+    "hardhat-gas-reporter": "^1.0.10",
+    "solidity-coverage": "^0.8.13",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.5.4"
+  }
+}
