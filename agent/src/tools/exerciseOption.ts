@@ -1,19 +1,20 @@
 /**
  * Tool: exercise_option
- * Exercise an in-the-money option position. Fetches a fresh Pyth VAA
- * and submits the exercise transaction to the vault.
+ * Builds an UNSIGNED transaction to exercise an in-the-money option position.
+ * Fetches a fresh Pyth VAA, verifies moneyness, and returns calldata for the
+ * user to sign with their own wallet — the backend never touches their key.
  */
 
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { ethers } from "ethers";
 import { fetchPythPrice, encodeUpdateData } from "../utils/pyth";
-import { getVaultContract, fromWad } from "../utils/hedera";
+import { getVaultContractReadOnly, fromWad } from "../utils/hedera";
 
 export const exerciseOptionTool = tool(
   async ({ tokenId }) => {
     try {
-      const vault    = getVaultContract();
+      const vault = getVaultContractReadOnly();
 
       // 1. Load position details
       const pos = await vault.getPosition(tokenId);
@@ -44,53 +45,52 @@ export const exerciseOptionTool = tool(
           ? `spot $${spotUsd.toFixed(4)} < strike $${strikeUsd.toFixed(4)}`
           : `spot $${spotUsd.toFixed(4)} > strike $${strikeUsd.toFixed(4)}`;
         return [
-          `⚠️  Option #${tokenId} is OUT OF THE MONEY (${diff}).`,
+          `Option #${tokenId} is OUT OF THE MONEY (${diff}).`,
           `Exercising OTM options results in a loss. Exercise only proceeds if you confirm.`,
           `Current intrinsic value: $0.00`,
         ].join("\n");
       }
 
-      // 4. Estimate intrinsic value
+      // 4. Estimate intrinsic value (read-only)
       const intrinsic = await vault.intrinsicValue(tokenId, pythPrice.priceWad);
 
-      // 5. Submit exercise transaction
-      const tx = await vault.exercise(tokenId, vaaBytes, {
-        value: ethers.parseEther("0.05"), // HBAR for Pyth update fee
+      // 5. Encode unsigned calldata — user's wallet will sign this
+      const calldata = vault.interface.encodeFunctionData("exercise", [
+        tokenId,
+        vaaBytes,
+      ]);
+
+      // 0.05 HBAR covers the Pyth update fee; excess is refunded by the vault
+      const valueWei = ethers.parseEther("0.05").toString();
+
+      const unsignedTx = {
+        to:       vault.target as string,
+        data:     calldata,
+        value:    valueWei,  // in wei (1e-18 HBAR units)
         gasLimit: 500_000,
-      });
-
-      console.log(`⏳ Exercise transaction submitted: ${tx.hash}`);
-      const receipt = await tx.wait();
-
-      // 6. Parse OptionExercised event
-      const iface  = vault.interface;
-      const events = receipt?.logs
-        .map((log: { topics: string[]; data: string }) => {
-          try { return iface.parseLog(log); } catch { return null; }
-        })
-        .filter(Boolean);
-
-      const exercised = events?.find((e: { name: string } | null) => e?.name === "OptionExercised");
-
-      const payoutWad = exercised
-        ? (exercised.args as { payoutWad: bigint }).payoutWad
-        : intrinsic as bigint;
+      };
 
       return [
-        `✅ Option #${tokenId} Exercised!`,
+        `Option #${tokenId} Ready to Exercise`,
         ``,
-        `Underlying:    ${symbol}`,
-        `Option Type:   ${isCall ? "CALL" : "PUT"}`,
-        `Spot at Exercise: $${spotUsd.toFixed(4)}`,
+        `Underlying:       ${symbol}`,
+        `Option Type:      ${isCall ? "CALL" : "PUT"}`,
+        `Spot at Quote:    $${spotUsd.toFixed(4)}`,
         `Strike:           $${strikeUsd.toFixed(4)}`,
         ``,
-        `Intrinsic Value: $${fromWad(intrinsic as bigint)} per unit`,
-        `Total Payout:    $${fromWad(payoutWad)} (cash settled)`,
+        `Intrinsic Value:  $${fromWad(intrinsic as bigint)} per unit (estimated payout)`,
         ``,
-        `Transaction: ${tx.hash}`,
+        `Sign and submit the following transaction with your Hedera wallet (HashPack / Blade / MetaMask):`,
+        ``,
+        `\`\`\`unsigned-tx`,
+        JSON.stringify(unsignedTx),
+        `\`\`\``,
+        ``,
+        `Note: the Pyth price used on-chain will be the one in the VAA above (fetched just now).`,
+        `Final payout = intrinsic value × size, paid from the writer's locked collateral.`,
       ].join("\n");
     } catch (err) {
-      return `Error exercising option: ${err instanceof Error ? err.message : String(err)}`;
+      return `Error building exercise_option transaction: ${err instanceof Error ? err.message : String(err)}`;
     }
   },
   {
@@ -98,7 +98,7 @@ export const exerciseOptionTool = tool(
     description:
       "Exercise an options position (OptionToken NFT) on Hedera. " +
       "Fetches the latest Pyth spot price, verifies the option is in-the-money, " +
-      "and submits an exercise transaction for cash settlement. " +
+      "and returns an UNSIGNED transaction for the user to sign with their own wallet. " +
       "The payout (intrinsic value × size) is transferred from the locked collateral.",
     schema: z.object({
       tokenId: z

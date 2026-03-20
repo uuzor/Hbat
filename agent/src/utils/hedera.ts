@@ -74,6 +74,9 @@ export function getProvider(): ethers.JsonRpcProvider {
 
 export function getSigner(): ethers.Wallet {
   if (!_signer) {
+    if (!OPERATOR_PRIVATE_KEY) {
+      throw new Error("OPERATOR_PRIVATE_KEY not set. This agent builds unsigned transactions for user wallets — no operator key is required for normal operation.");
+    }
     _signer = new ethers.Wallet(OPERATOR_PRIVATE_KEY, getProvider());
   }
   return _signer;
@@ -84,6 +87,13 @@ export function getSigner(): ethers.Wallet {
 export function getVaultContract(address = OPTIONS_VAULT_ADDRESS): ethers.Contract {
   if (!address) throw new Error("OPTIONS_VAULT_ADDRESS not set in .env");
   return new ethers.Contract(address, VAULT_ABI, getSigner());
+}
+
+/// Read-only vault contract — no private key required.
+/// Use this for view calls and building unsigned transactions.
+export function getVaultContractReadOnly(address = OPTIONS_VAULT_ADDRESS): ethers.Contract {
+  if (!address) throw new Error("OPTIONS_VAULT_ADDRESS not set in .env");
+  return new ethers.Contract(address, VAULT_ABI, getProvider());
 }
 
 export function getPythContract(address = PYTH_CONTRACT_ADDRESS): ethers.Contract {

@@ -1,8 +1,10 @@
 /**
  * Tool: write_option
- * Submits a transaction to the OptionsVault to write (sell) an option.
- * Fetches a fresh Pyth VAA, computes the premium on-chain, locks collateral,
- * and schedules auto-expiry via HIP-1215.
+ * Builds an UNSIGNED transaction to write (sell) an option via the OptionsVault.
+ * The agent computes the premium and returns the calldata for the user to sign
+ * with their own wallet (HashPack, Blade, MetaMask on Hedera, etc.).
+ *
+ * No private key is ever needed by the backend for this operation.
  */
 
 import { tool } from "@langchain/core/tools";
@@ -10,14 +12,14 @@ import { z } from "zod";
 import { ethers } from "ethers";
 import { fetchPythPrice, encodeUpdateData } from "../utils/pyth";
 import {
-  getVaultContract,
+  getVaultContractReadOnly,
   toWad,
   fromWad,
   parseOptionType,
   daysFromNow,
   formatExpiry,
 } from "../utils/hedera";
-import { DEFAULT_VOLATILITY, DEFAULT_EXPIRY_DAYS, PYTH_FEEDS } from "../config";
+import { DEFAULT_VOLATILITY, DEFAULT_EXPIRY_DAYS, OPTIONS_VAULT_ADDRESS } from "../config";
 
 export const writeOptionTool = tool(
   async ({
@@ -51,101 +53,83 @@ export const writeOptionTool = tool(
         ? toWad(maxPremiumUsd)
         : toWad(9999999); // no effective cap if not specified
 
-      const vault = getVaultContract();
+      const vault = getVaultContractReadOnly();
 
-      // 3. Estimate Pyth update fee
-      const pythFeeWei = await vault.runner?.provider
-        ?.call({
-          to: await vault.getAddress(),
-          data: vault.interface.encodeFunctionData("writeOption", [
-            {
-              symbol: upperSymbol,
-              optionType: optTypeIdx,
-              strikeWad,
-              expiry,
-              sizeWad,
-              sigmaWad,
-              collateralToken: colToken,
-              pythUpdateData: vaaBytes,
-            },
-            maxPremWad,
-          ]),
-        })
-        .catch(() => null);
-
-      // 4. Send transaction
-      const tx = await vault.writeOption(
-        {
+      // 3. Get an on-chain premium quote so the user knows what to expect
+      let premiumQuote = "unknown";
+      try {
+        const [premWad] = await vault.quotePremium({
           symbol: upperSymbol,
           optionType: optTypeIdx,
           strikeWad,
           expiry,
           sizeWad,
           sigmaWad,
-          collateralToken: colToken,
-          pythUpdateData:  vaaBytes,
-        },
-        maxPremWad,
-        {
-          value: ethers.parseEther("0.1"), // HBAR for Pyth fee + premium (overpays, refunded)
-          gasLimit: 1_000_000,
-        }
-      );
-
-      console.log(`⏳ Transaction submitted: ${tx.hash}`);
-      const receipt = await tx.wait();
-
-      // 5. Parse OptionWritten event
-      const iface  = vault.interface;
-      const events = receipt?.logs
-        .map((log: { topics: string[]; data: string }) => {
-          try { return iface.parseLog(log); } catch { return null; }
-        })
-        .filter(Boolean);
-
-      const written = events?.find((e: { name: string } | null) => e?.name === "OptionWritten");
-
-      if (!written) {
-        return `✅ Transaction confirmed (${tx.hash}) but could not parse OptionWritten event.`;
+        });
+        premiumQuote = `$${fromWad(premWad as bigint)}`;
+      } catch {
+        // quotePremium is best-effort — doesn't block tx building
       }
 
-      const tokenId    = (written.args as { tokenId: bigint }).tokenId;
-      const premiumWad = (written.args as { premiumWad: bigint }).premiumWad;
-      const scheduleId = (written.args as { scheduleId: string }).scheduleId;
+      // 4. Encode unsigned calldata — user's wallet will sign this
+      const writeParams = {
+        symbol: upperSymbol,
+        optionType: optTypeIdx,
+        strikeWad,
+        expiry,
+        sizeWad,
+        sigmaWad,
+        collateralToken: colToken,
+        pythUpdateData: vaaBytes,
+      };
+
+      const calldata = vault.interface.encodeFunctionData("writeOption", [
+        writeParams,
+        maxPremWad,
+      ]);
+
+      // 0.1 HBAR covers the Pyth update fee + option premium; excess is refunded by the vault
+      const valueWei = ethers.parseEther("0.1").toString();
+
+      const unsignedTx = {
+        to:       vault.target as string,
+        data:     calldata,
+        value:    valueWei,  // in wei (1e-18 HBAR units)
+        gasLimit: 1_000_000,
+      };
 
       return [
-        `✅ Option Written Successfully!`,
+        `Option Ready to Sign`,
         ``,
-        `Option NFT:    #${tokenId} (OptionToken ERC-721)`,
         `Underlying:    ${upperSymbol}`,
         `Type:          ${optionType.toUpperCase()}`,
         `Strike:        $${strikeUsd}`,
         `Size:          ${sizeUnits} units`,
         `Expiry:        ${formatExpiry(expiry)} (${expiryDays ?? DEFAULT_EXPIRY_DAYS} days)`,
-        `Premium Paid:  $${fromWad(premiumWad)} total`,
+        `Est. Premium:  ${premiumQuote}`,
         ``,
-        `🤖 HIP-1215 Auto-Expiry:`,
-        `   Schedule ID: ${scheduleId !== ethers.ZeroAddress ? scheduleId : "N/A (scheduled off-chain)"}`,
-        `   At expiry, Hedera consensus nodes will call expireOption(${tokenId}) automatically.`,
-        `   No keeper bot needed — this is protocol-native automation.`,
+        `Sign and submit the following transaction with your Hedera wallet (HashPack / Blade / MetaMask):`,
         ``,
-        `Transaction: ${tx.hash}`,
-        `Gas used: ${receipt?.gasUsed?.toString() ?? "N/A"} (≈$${((Number(receipt?.gasUsed ?? 0) * 1e-9) * 0.0001).toFixed(6)} at Hedera fixed fees)`,
+        `\`\`\`unsigned-tx`,
+        JSON.stringify(unsignedTx),
+        `\`\`\``,
+        ``,
+        `The vault will refund any excess HBAR after deducting the Pyth fee and actual premium.`,
+        `Upon confirmation, you will receive an OptionToken NFT representing this position.`,
       ].join("\n");
     } catch (err) {
-      return `Error writing option: ${err instanceof Error ? err.message : String(err)}`;
+      return `Error building write_option transaction: ${err instanceof Error ? err.message : String(err)}`;
     }
   },
   {
     name: "write_option",
     description:
       "Write (sell) a covered call or cash-secured put option on Hedera. " +
-      "This submits an on-chain transaction that: " +
+      "This builds an UNSIGNED transaction that: " +
       "(1) fetches a fresh Pyth price update, " +
-      "(2) computes the Black-Scholes premium on-chain, " +
-      "(3) locks your collateral in the vault, " +
-      "(4) mints an OptionToken NFT to you, " +
-      "(5) schedules automatic settlement via HIP-1215. " +
+      "(2) quotes the Black-Scholes premium on-chain, " +
+      "(3) returns calldata for the user to sign with their own wallet. " +
+      "The user's wallet signs and submits — the backend never touches their private key. " +
       "Requires: sufficient collateral deposited in the vault, and HBAR for gas/Pyth fees.",
     schema: z.object({
       symbol: z

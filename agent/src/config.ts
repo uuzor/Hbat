@@ -12,8 +12,8 @@ function requireEnv(key: string): string {
 // ── Hedera Network ────────────────────────────────────────────────────────────
 
 export const HEDERA_NETWORK        = (process.env.HEDERA_NETWORK || "testnet") as "mainnet" | "testnet" | "local";
-export const OPERATOR_ACCOUNT_ID   = requireEnv("OPERATOR_ACCOUNT_ID");
-export const OPERATOR_PRIVATE_KEY  = requireEnv("OPERATOR_PRIVATE_KEY");
+export const OPERATOR_ACCOUNT_ID   = process.env["OPERATOR_ACCOUNT_ID"]  || "";
+export const OPERATOR_PRIVATE_KEY  = process.env["OPERATOR_PRIVATE_KEY"] || "";
 export const HEDERA_TESTNET_RPC    = process.env.HEDERA_TESTNET_RPC  || "https://testnet.hashio.io/api";
 export const HEDERA_MAINNET_RPC    = process.env.HEDERA_MAINNET_RPC  || "https://mainnet.hashio.io/api";
 export const HEDERA_MIRROR_NODE    = process.env.HEDERA_MIRROR_NODE  || "https://testnet.mirrornode.hedera.com";
