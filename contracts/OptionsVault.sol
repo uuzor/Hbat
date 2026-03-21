@@ -617,11 +617,21 @@ contract OptionsVault is ReentrancyGuard, Ownable, Pausable {
                 memo:          bytes32(tokenId)
             });
 
-        try hss.scheduleCall{value: 0}(params) returns (address sid) {
-            scheduleId = sid;
-        } catch {
-            // HIP-1215 may not be available on all testnet versions — gracefully degrade.
-            // Manual expiry via expireOption() remains available as fallback.
+        // Use a low-level call so that both revert AND abi-decode errors degrade
+        // gracefully. On Hardhat (no precompile at HSS address) the call returns
+        // empty data; a typed try/catch would still panic on the decode step.
+        // scheduleCall is overloaded so we specify the full struct signature.
+        (bool ok, bytes memory ret) = address(hss).call(
+            abi.encodeWithSignature(
+                "scheduleCall((address,bytes,uint256,uint256,uint256,address,bytes32))",
+                params
+            )
+        );
+        if (ok && ret.length >= 32) {
+            scheduleId = abi.decode(ret, (address));
+        } else {
+            // HIP-1215 not available — graceful degradation.
+            // Manual expiry via expireOption() remains the fallback.
             scheduleId = address(0);
         }
     }

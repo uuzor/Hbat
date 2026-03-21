@@ -15,10 +15,11 @@ pragma solidity ^0.8.24;
 ///      OptionsVault uses HTS to mint Option Tokens (NFTs) representing positions.
 ///      Each NFT encodes: underlying, strike, expiry, type (call/put), size, writer.
 
-interface IHederaTokenService {
-    // ─── Response Codes ──────────────────────────────────────────────────────────
+library HederaResponseCodes {
     int32 constant SUCCESS = 22;
+}
 
+interface IHederaTokenService {
     // ─── Structs ─────────────────────────────────────────────────────────────────
 
     struct HederaToken {

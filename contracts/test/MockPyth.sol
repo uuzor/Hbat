@@ -33,8 +33,8 @@ contract MockPyth is IPyth {
         emit PriceFeedUpdate(feedId, uint64(publishTime), price, conf);
     }
 
-    function updatePriceFeeds(bytes[] calldata /* updateData */) external payable override {
-        require(msg.value >= singleUpdateFeeInWei, "MockPyth: insufficient fee");
+    function updatePriceFeeds(bytes[] calldata updateData) external payable override {
+        require(msg.value >= singleUpdateFeeInWei * updateData.length, "MockPyth: insufficient fee");
         // No-op for mock: prices are set directly via setPrice()
     }
 

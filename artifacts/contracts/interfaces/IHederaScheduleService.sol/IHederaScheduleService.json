@@ -1,0 +1,243 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IHederaScheduleService",
+  "sourceName": "contracts/interfaces/IHederaScheduleService.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "cancelledBy",
+          "type": "address"
+        }
+      ],
+      "name": "ScheduleCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "creator",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "scheduledTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "ScheduleCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "success",
+          "type": "bool"
+        }
+      ],
+      "name": "ScheduleExecuted",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        }
+      ],
+      "name": "cancelSchedule",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        }
+      ],
+      "name": "getScheduleInfo",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "scheduleId",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "scheduledTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "executed",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "deleted",
+              "type": "bool"
+            },
+            {
+              "internalType": "address",
+              "name": "creator",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct IHederaScheduleService.ScheduleInfo",
+          "name": "info",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getSchedulingFee",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "tinyCents",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "callData",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint256",
+          "name": "scheduledTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "scheduleCall",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "target",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "callData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "scheduledTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "gasLimit",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "tinyCents",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "memo",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct IHederaScheduleService.ScheduleCallParams",
+          "name": "params",
+          "type": "tuple"
+        }
+      ],
+      "name": "scheduleCall",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "scheduleId",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

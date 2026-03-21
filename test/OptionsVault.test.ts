@@ -35,8 +35,8 @@ function toWad(x: number | string): bigint {
   return ethers.parseEther(String(x));
 }
 
-function daysFromNow(d: number): number {
-  return Math.floor(Date.now() / 1000) + d * 86400;
+async function daysFromNow(d: number): Promise<number> {
+  return (await time.latest()) + d * 86400;
 }
 
 // Encode a Pyth price as a bytes32-compatible mock update (unused bytes, MockPyth ignores updateData)
@@ -81,8 +81,9 @@ describe("OptionsVault — Full Test Suite", function () {
     await vault.connect(owner).registerFeed("BTC",  FEED_IDS.BTC);
     await vault.connect(owner).registerFeed("XAU",  FEED_IDS.XAU);
 
-    // Seed MockPyth with HBAR price
-    const now = Math.floor(Date.now() / 1000);
+    // Seed MockPyth with HBAR price — use Hardhat's block.timestamp, not Date.now(),
+    // because block.timestamp advances ahead of wall-clock time in fast test runs.
+    const now = await time.latest();
     await pyth.setPrice(FEED_IDS.HBAR, HBAR_PRICE_RAW, 50_000n, HBAR_EXPO, now);
     await pyth.setPrice(FEED_IDS.BTC,  9_500_000_000_000n, 5_000_000_000n, -8, now);
     await pyth.setPrice(FEED_IDS.XAU,  320_000_000_000n, 100_000_000n, -8, now);
@@ -140,7 +141,7 @@ describe("OptionsVault — Full Test Suite", function () {
     const EXPIRY_DAYS = 7;
 
     it("should quote a call premium > 0 for OTM call", async () => {
-      const expiry = daysFromNow(EXPIRY_DAYS);
+      const expiry = await daysFromNow(EXPIRY_DAYS);
       const [premium] = await vault.quotePremium({
         symbol:     "HBAR",
         optionType: 0, // Call
@@ -154,7 +155,7 @@ describe("OptionsVault — Full Test Suite", function () {
     });
 
     it("should quote a put premium > 0", async () => {
-      const expiry = daysFromNow(EXPIRY_DAYS);
+      const expiry = await daysFromNow(EXPIRY_DAYS);
       const [premium] = await vault.quotePremium({
         symbol:     "HBAR",
         optionType: 1, // Put
@@ -168,7 +169,7 @@ describe("OptionsVault — Full Test Suite", function () {
     });
 
     it("should return all Greeks via quotePremium", async () => {
-      const expiry = daysFromNow(EXPIRY_DAYS);
+      const expiry = await daysFromNow(EXPIRY_DAYS);
       const [, greeks] = await vault.quotePremium({
         symbol:     "HBAR",
         optionType: 0,
@@ -196,7 +197,7 @@ describe("OptionsVault — Full Test Suite", function () {
 
     it("should satisfy put-call parity (approx)", async () => {
       // C - P = S - K * e^(-rT)  (with r=5%, T=7/365)
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
       const sizeWad = toWad("1");
 
       const [callPrem] = await vault.quotePremium({
@@ -222,7 +223,7 @@ describe("OptionsVault — Full Test Suite", function () {
     });
 
     it("should quote higher premium for higher volatility", async () => {
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
       const params = {
         symbol: "HBAR", optionType: 0 as const, strikeWad: STRIKE,
         expiry, sizeWad: toWad("1"),
@@ -237,8 +238,8 @@ describe("OptionsVault — Full Test Suite", function () {
         symbol: "HBAR", optionType: 0 as const, strikeWad: STRIKE,
         sizeWad: toWad("1"), sigmaWad: SIGMA,
       };
-      const [prem7d]  = await vault.quotePremium({ ...params, expiry: daysFromNow(7)  });
-      const [prem30d] = await vault.quotePremium({ ...params, expiry: daysFromNow(30) });
+      const [prem7d]  = await vault.quotePremium({ ...params, expiry: await daysFromNow(7)  });
+      const [prem30d] = await vault.quotePremium({ ...params, expiry: await daysFromNow(30) });
       expect(prem30d).to.be.gt(prem7d);
     });
   });
@@ -259,7 +260,7 @@ describe("OptionsVault — Full Test Suite", function () {
     });
 
     it("should write a call option and mint OptionToken NFT", async () => {
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
       const [quotedPremium] = await vault.quotePremium({
         symbol: "HBAR", optionType: 0, strikeWad: STRIKE,
         expiry, sizeWad: SIZE, sigmaWad: SIGMA,
@@ -273,7 +274,8 @@ describe("OptionsVault — Full Test Suite", function () {
           pythUpdateData: [],
         },
         quotedPremium * 2n, // 2× slippage tolerance
-        { value: ethers.parseEther("2"), gasLimit: 1_000_000 }
+        // value must cover premium; vault refunds excess
+        { value: quotedPremium * 2n, gasLimit: 1_000_000 }
       );
 
       const rcpt = await tx.wait();
@@ -297,7 +299,7 @@ describe("OptionsVault — Full Test Suite", function () {
     });
 
     it("should reject write with unsupported symbol", async () => {
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
       await expect(
         vault.connect(writer).writeOption(
           {
@@ -329,7 +331,7 @@ describe("OptionsVault — Full Test Suite", function () {
     });
 
     it("should reject write when premium exceeds maxPremium", async () => {
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
       await expect(
         vault.connect(writer).writeOption(
           {
@@ -358,7 +360,11 @@ describe("OptionsVault — Full Test Suite", function () {
     beforeEach(async () => {
       await vault.connect(writer).depositHBAR({ value: ethers.parseEther("500") });
 
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
+      const [exercisePremium] = await vault.quotePremium({
+        symbol: "HBAR", optionType: 0, strikeWad: STRIKE,
+        expiry, sizeWad: SIZE, sigmaWad: SIGMA,
+      });
       const tx = await vault.connect(writer).writeOption(
         {
           symbol: "HBAR", optionType: 0, strikeWad: STRIKE,
@@ -366,8 +372,8 @@ describe("OptionsVault — Full Test Suite", function () {
           collateralToken: ethers.ZeroAddress,
           pythUpdateData: [],
         },
-        toWad("999"),
-        { value: ethers.parseEther("2"), gasLimit: 1_000_000 }
+        exercisePremium * 2n,
+        { value: exercisePremium * 2n, gasLimit: 1_000_000 }
       );
       const rcpt = await tx.wait();
 
@@ -436,7 +442,7 @@ describe("OptionsVault — Full Test Suite", function () {
   describe("OptionToken NFT", () => {
     it("should generate a valid tokenURI with on-chain SVG", async () => {
       await vault.connect(writer).depositHBAR({ value: ethers.parseEther("200") });
-      const expiry = daysFromNow(7);
+      const expiry = await daysFromNow(7);
 
       await vault.connect(writer).writeOption(
         {
@@ -469,7 +475,7 @@ describe("OptionsVault — Full Test Suite", function () {
       await vault.connect(writer).writeOption(
         {
           symbol: "HBAR", optionType: 0, strikeWad: toWad("0.15"),
-          expiry: daysFromNow(7), sizeWad: toWad("1000"), sigmaWad: toWad("0.8"),
+          expiry: await daysFromNow(7), sizeWad: toWad("1000"), sigmaWad: toWad("0.8"),
           collateralToken: ethers.ZeroAddress, pythUpdateData: [],
         },
         toWad("999"),
@@ -503,7 +509,7 @@ describe("OptionsVault — Full Test Suite", function () {
         vault.connect(writer).writeOption(
           {
             symbol: "HBAR", optionType: 0, strikeWad: toWad("0.15"),
-            expiry: daysFromNow(7), sizeWad: toWad("1000"), sigmaWad: toWad("0.8"),
+            expiry: await daysFromNow(7), sizeWad: toWad("1000"), sigmaWad: toWad("0.8"),
             collateralToken: ethers.ZeroAddress, pythUpdateData: [],
           },
           toWad("999"),

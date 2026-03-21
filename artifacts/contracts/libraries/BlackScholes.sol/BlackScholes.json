@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "BlackScholes",
+  "sourceName": "contracts/libraries/BlackScholes.sol",
+  "abi": [],
+  "bytecode": "0x6080806040523460175760399081601c823930815050f35b5f80fdfe5f80fdfea2646970667358221220bb251fb6bb8dce002e444650ee2c831d5564fc180c1afb01cb4eace69731ba2764736f6c634300081a0033",
+  "deployedBytecode": "0x5f80fdfea2646970667358221220bb251fb6bb8dce002e444650ee2c831d5564fc180c1afb01cb4eace69731ba2764736f6c634300081a0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

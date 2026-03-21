@@ -87,6 +87,14 @@ library FixedPointMath {
         if (a < IWAD) { a <<= 2; n -= 2; }
         if (a < IWAD) { a <<= 1; n -= 1; }
 
+        // Re-normalise: shift-up may have produced a ≫ 2*WAD (e.g. 0.9*128 = 115.2).
+        // Shift back down until a ∈ [1e18, 2e18).
+        if (a >= int256(128) * IWAD) { a >>= 7; n += 7; }
+        if (a >= int256(16)  * IWAD) { a >>= 4; n += 4; }
+        if (a >= int256(8)   * IWAD) { a >>= 3; n += 3; }
+        if (a >= int256(4)   * IWAD) { a >>= 2; n += 2; }
+        if (a >= int256(2)   * IWAD) { a >>= 1; n += 1; }
+
         // Now a ∈ [1e18, 2e18). Compute ln(a/WAD) via arctanh series.
         // t = (a − WAD) / (a + WAD)  →  t ∈ (0, 1/3)
         int256 t    = divWadI(a - IWAD, a + IWAD);

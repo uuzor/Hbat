@@ -7,14 +7,14 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { fetchPythPrices } from "../utils/pyth";
-import { getVaultContract, fromWad, formatExpiry } from "../utils/hedera";
+import { getVaultContractReadOnly, fromWad, formatExpiry } from "../utils/hedera";
 import { ethers } from "ethers";
 import { PYTH_FEEDS } from "../config";
 
 export const vaultStatusTool = tool(
   async ({ address, tokenIds }) => {
     try {
-      const vault = getVaultContract();
+      const vault = getVaultContractReadOnly();
       const lines: string[] = [];
 
       // ── Live Pyth Prices ──

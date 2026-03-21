@@ -167,7 +167,7 @@ contract OptionToken is ERC721URIStorage, Ownable {
 
         string memory json = Base64.encode(bytes(string.concat(
             '{"name":"', opt.underlyingSymbol, ' ', typeStr, ' $', strikeStr, ' Option #', tokenId.toString(), '",',
-            '"description":"Hedera Options Vault — Agentic DeFi. Exercisable via HIP-1215 autonomous settlement.",',
+            '"description":"Hedera Options Vault - Agentic DeFi. Exercisable via HIP-1215 autonomous settlement.",',
             '"image":"data:image/svg+xml;base64,', Base64.encode(bytes(svg)), '",',
             '"attributes":[',
                 '{"trait_type":"Underlying","value":"', opt.underlyingSymbol, '"},',

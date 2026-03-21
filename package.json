@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "@hashgraph/hedera-agent-kit": "^1.0.0",
     "@hashgraph/sdk": "^2.50.0",
     "@langchain/anthropic": "^0.3.0",
     "@langchain/core": "^0.3.0",

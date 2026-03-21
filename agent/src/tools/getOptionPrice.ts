@@ -7,7 +7,7 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { fetchPythPrice, formatWad } from "../utils/pyth";
-import { getVaultContract, toWad, fromWad, parseOptionType, daysFromNow, formatGreeks } from "../utils/hedera";
+import { getVaultContractReadOnly, toWad, fromWad, parseOptionType, daysFromNow, formatGreeks } from "../utils/hedera";
 import { DEFAULT_VOLATILITY, DEFAULT_EXPIRY_DAYS } from "../config";
 
 export const getOptionPriceTool = tool(
@@ -25,7 +25,7 @@ export const getOptionPriceTool = tool(
       const expiry      = daysFromNow(expiryDays ?? DEFAULT_EXPIRY_DAYS);
       const optTypeIdx  = parseOptionType(optionType);
 
-      const vault = getVaultContract();
+      const vault = getVaultContractReadOnly();
       const result = await vault.quotePremium({
         symbol:     symbol.toUpperCase(),
         optionType: optTypeIdx,
