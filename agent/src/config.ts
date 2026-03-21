@@ -38,10 +38,26 @@ export const PYTH_FEEDS: Record<string, `0x${string}`> = {
   "USDC": "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
 };
 
-// ── Claude AI ─────────────────────────────────────────────────────────────────
+// ── AI Provider ───────────────────────────────────────────────────────────────
+// Supports: OpenRouter, Anthropic, or Google Gemini (detected by env var)
 
-export const ANTHROPIC_API_KEY = requireEnv("ANTHROPIC_API_KEY");
-export const CLAUDE_MODEL      = "claude-opus-4-6"; // Latest and most capable for financial reasoning
+export const OPENROUTER_API_KEY = process.env["OPENROUTER_API_KEY"] || "";
+export const ANTHROPIC_API_KEY  = process.env["ANTHROPIC_API_KEY"]  || "";
+export const GEMINI_API_KEY     = process.env["GEMINI_API_KEY"]     || "";
+
+// Detect which provider is configured
+export const AI_PROVIDER: "openrouter" | "anthropic" | "gemini" = (() => {
+  if (OPENROUTER_API_KEY) return "openrouter";
+  if (ANTHROPIC_API_KEY)  return "anthropic";
+  if (GEMINI_API_KEY)     return "gemini";
+  throw new Error(
+    "No AI API key configured. Set one of: OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY in .env"
+  );
+})();
+
+// Default model per provider
+export const OPENROUTER_MODEL  = process.env["OPENROUTER_MODEL"] || "anthropic/claude-opus-4-6";
+export const CLAUDE_MODEL      = "claude-opus-4-6";
 
 // ── Protocol Defaults ─────────────────────────────────────────────────────────
 

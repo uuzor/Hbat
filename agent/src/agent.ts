@@ -13,14 +13,23 @@
  *   "Show me the vault status and current prices"
  */
 
+import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { createReactAgent } from "langchain/agents";
 import { AgentExecutor } from "langchain/agents";
 import { MessagesPlaceholder } from "@langchain/core/prompts";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
-import { ANTHROPIC_API_KEY, CLAUDE_MODEL, OPTIONS_VAULT_ADDRESS } from "./config";
+import {
+  AI_PROVIDER,
+  OPENROUTER_API_KEY,
+  OPENROUTER_MODEL,
+  ANTHROPIC_API_KEY,
+  CLAUDE_MODEL,
+  OPTIONS_VAULT_ADDRESS,
+} from "./config";
 import { getOptionPriceTool } from "./tools/getOptionPrice";
 import { writeOptionTool } from "./tools/writeOption";
 import { exerciseOptionTool } from "./tools/exerciseOption";
@@ -70,13 +79,39 @@ Respond concisely. Use tables and structured output for Greeks/quotes.`;
 
 // ── Agent Factory ─────────────────────────────────────────────────────────────
 
+function buildLLM(): BaseChatModel {
+  if (AI_PROVIDER === "openrouter") {
+    console.log(`[Agent] Using OpenRouter (model: ${OPENROUTER_MODEL})`);
+    return new ChatOpenAI({
+      apiKey:      OPENROUTER_API_KEY,
+      model:       OPENROUTER_MODEL,
+      temperature: 0,
+      maxTokens:   4096,
+      configuration: {
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: {
+          "HTTP-Referer": "https://github.com/hedera-options-vault",
+          "X-Title":      "Hedera Options Vault Agent",
+        },
+      },
+    }) as unknown as BaseChatModel;
+  }
+
+  if (AI_PROVIDER === "anthropic") {
+    console.log(`[Agent] Using Anthropic (model: ${CLAUDE_MODEL})`);
+    return new ChatAnthropic({
+      apiKey:      ANTHROPIC_API_KEY,
+      model:       CLAUDE_MODEL,
+      temperature: 0,
+      maxTokens:   4096,
+    }) as unknown as BaseChatModel;
+  }
+
+  throw new Error(`AI provider "${AI_PROVIDER}" not yet supported`);
+}
+
 export async function createOptionsAgent(): Promise<AgentExecutor> {
-  const llm = new ChatAnthropic({
-    apiKey:      ANTHROPIC_API_KEY,
-    model:       CLAUDE_MODEL,
-    temperature: 0,
-    maxTokens:   4096,
-  });
+  const llm = buildLLM();
 
   const tools = [
     getOptionPriceTool,
