@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+artifacts/
+cache/
+typechain-types/
+
+# Environment (contains secrets)
+.env
+
+# Coverage
+coverage/
+
+# Hardhat
+.openzeppelin/
+
+# Misc
+*.js.map
+.DS_Store
