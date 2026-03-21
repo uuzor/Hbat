@@ -21,6 +21,8 @@ import { MessagesPlaceholder } from "@langchain/core/prompts";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyTool = any;
 
 import {
   AI_PROVIDER,
@@ -113,7 +115,9 @@ function buildLLM(): BaseChatModel {
 export async function createOptionsAgent(): Promise<AgentExecutor> {
   const llm = buildLLM();
 
-  const tools = [
+  // Cast needed: DynamicStructuredTool schema types diverge from ToolInterface<StringInputToolSchema>
+  // across langchain version combinations — runtime behaviour is correct.
+  const tools: AnyTool[] = [
     getOptionPriceTool,
     writeOptionTool,
     exerciseOptionTool,

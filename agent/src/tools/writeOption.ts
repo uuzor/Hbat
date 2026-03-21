@@ -21,6 +21,7 @@ import {
 } from "../utils/hedera";
 import { DEFAULT_VOLATILITY, DEFAULT_EXPIRY_DAYS, OPTIONS_VAULT_ADDRESS } from "../config";
 
+// @ts-ignore TS2589: Zod+LangChain inference depth — runtime is correct
 export const writeOptionTool = tool(
   async ({
     symbol,

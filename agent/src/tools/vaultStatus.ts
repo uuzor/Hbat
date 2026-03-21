@@ -11,6 +11,7 @@ import { getVaultContractReadOnly, fromWad, formatExpiry } from "../utils/hedera
 import { ethers } from "ethers";
 import { PYTH_FEEDS } from "../config";
 
+// @ts-ignore TS2589: Zod+LangChain inference depth — runtime is correct
 export const vaultStatusTool = tool(
   async ({ address, tokenIds }) => {
     try {

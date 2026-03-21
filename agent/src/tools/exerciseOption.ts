@@ -11,6 +11,7 @@ import { ethers } from "ethers";
 import { fetchPythPrice, encodeUpdateData } from "../utils/pyth";
 import { getVaultContractReadOnly, fromWad } from "../utils/hedera";
 
+// @ts-ignore TS2589: Zod+LangChain inference depth — runtime is correct
 export const exerciseOptionTool = tool(
   async ({ tokenId }) => {
     try {

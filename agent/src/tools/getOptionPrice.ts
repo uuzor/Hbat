@@ -10,6 +10,7 @@ import { fetchPythPrice, formatWad } from "../utils/pyth";
 import { getVaultContractReadOnly, toWad, fromWad, parseOptionType, daysFromNow, formatGreeks } from "../utils/hedera";
 import { DEFAULT_VOLATILITY, DEFAULT_EXPIRY_DAYS } from "../config";
 
+// @ts-ignore TS2589: Zod+LangChain inference depth — runtime is correct
 export const getOptionPriceTool = tool(
   async ({ symbol, optionType, strikeUsd, expiryDays, sizeUnits, volatilityPct }) => {
     try {
